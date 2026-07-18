@@ -28,7 +28,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell title="Log in" subtitle="Welcome back to TindleCraft.">
+    <AuthShell title="Log in" subtitle="Welcome back to Plainsignal.">
       <form onSubmit={onSubmit} className="space-y-3">
         <Field label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" />
         <Field

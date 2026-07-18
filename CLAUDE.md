@@ -1,4 +1,4 @@
-# TindleCraft — project spec (founding context for Claude Code)
+# Plainsignal — project spec (founding context for Claude Code)
 
 This file is the standing context for every Claude Code session on this project.
 Read it before making changes. It defines what we're building, the stack, the data

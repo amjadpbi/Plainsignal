@@ -1,4 +1,4 @@
-// TindleCraft data model — first cut (CLAUDE.md §3).
+// Plainsignal data model — first cut (CLAUDE.md §3).
 // Evolve ONLY via `prisma migrate` — never hand-edit the DB (CLAUDE.md §7).
 //
 // Multi-tenant rule: every USER-OWNED row carries userId and must be filtered

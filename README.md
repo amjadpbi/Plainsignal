@@ -1,4 +1,4 @@
-# TindleCraft
+# Plainsignal
 
 Analytics and workflow SaaS for Etsy sellers. Honest, data-grounded metrics —
 every number traces back to a real Etsy signal (see [CLAUDE.md](CLAUDE.md) for the

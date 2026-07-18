@@ -68,8 +68,10 @@ export default function FeesPage() {
   const [currencyConversion, setCurrencyConversion] = useState(false);
   const [offsiteAds, setOffsiteAds] = useState<OffsiteAdsMode>('none');
   const [regulatoryPct, setRegulatoryPct] = useState(0);
-  const [processingRate, setProcessingRate] = useState(PAYMENT_PROCESSING_US.rate * 100);
-  const [processingFixed, setProcessingFixed] = useState(PAYMENT_PROCESSING_US.fixed);
+  // Explicit <number>: the schedule is `as const`, so inference would pin these
+  // to the literal types (0.25) and reject any other value.
+  const [processingRate, setProcessingRate] = useState<number>(PAYMENT_PROCESSING_US.rate * 100);
+  const [processingFixed, setProcessingFixed] = useState<number>(PAYMENT_PROCESSING_US.fixed);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [label, setLabel] = useState('');

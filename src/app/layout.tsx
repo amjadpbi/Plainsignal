@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'TindleCraft — Etsy keyword research',
+  title: 'Plainsignal — Etsy keyword research',
   description: 'Honest, data-grounded keyword research for Etsy sellers.',
 };
 

@@ -44,13 +44,18 @@ export interface FeeInput {
   transactionFeeRate?: number;
 }
 
-export interface FeeLine {
+/**
+ * Declared as a `type`, not an `interface`, on purpose: interfaces have no
+ * implicit index signature, so `FeeLine[]` would not be assignable to Prisma's
+ * `InputJsonValue` when we persist the breakdown as JSON.
+ */
+export type FeeLine = {
   key: string;
   label: string;
   /** Human-readable basis, e.g. "6.5% of $35.00". */
   basis: string;
   amount: number;
-}
+};
 
 export interface FeeResult {
   /** What the buyer pays (item + shipping + gift wrap), excluding sales tax. */

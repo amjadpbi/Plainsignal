@@ -33,3 +33,6 @@ prisma/*.db
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local Claude Code settings (machine-specific permission allowlist)
+.claude/settings.local.json

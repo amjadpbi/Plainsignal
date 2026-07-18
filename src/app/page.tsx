@@ -121,7 +121,7 @@ export default function Home() {
   if (auth.status === 'anon') {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 text-center">
-        <h1 className="text-2xl font-bold tracking-tight">TindleCraft</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Plainsignal</h1>
         <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
           Honest, data-grounded Etsy keyword research. Log in to start.
         </p>
@@ -148,7 +148,7 @@ export default function Home() {
       <header className="mb-8 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">TindleCraft</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Plainsignal</h1>
             {result && (
               <span
                 className={`rounded-full px-2 py-0.5 text-xs font-medium ${
