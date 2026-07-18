@@ -1,0 +1,161 @@
+// TindleCraft data model — first cut (CLAUDE.md §3).
+// Evolve ONLY via `prisma migrate` — never hand-edit the DB (CLAUDE.md §7).
+//
+// Multi-tenant rule: every USER-OWNED row carries userId and must be filtered
+// by it in app code (CLAUDE.md §5, step 5). Tenant isolation lives in the
+// application layer, not Postgres RLS.
+//
+// KeywordSnapshot / KeywordScore are shared MARKET reference data (the honest
+// moat — real Etsy signals over time), not tenant-owned. A snapshot may
+// optionally reference the Search that triggered its capture.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlanTier {
+  FREE
+  STARTER
+  PRO
+}
+
+enum NicheVerdict {
+  STRONG
+  PROMISING
+  CROWDED
+  AVOID
+}
+
+/// An application user. Identity is issued by Supabase Auth (Phase 2); until
+/// then rows can be created directly. supabaseAuthId is the verified subject.
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  supabaseAuthId String?  @unique @map("supabase_auth_id")
+  plan           PlanTier @default(FREE)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  shops           Shop[]
+  searches        Search[]
+  feeCalculations FeeCalculation[]
+
+  @@map("users")
+}
+
+/// A seller's Etsy shop. etsyShopId is null until the shop is connected.
+model Shop {
+  id         String  @id @default(cuid())
+  userId     String  @map("user_id")
+  etsyShopId String? @map("etsy_shop_id")
+  name       String
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auditRuns AuditRun[]
+
+  @@index([userId])
+  @@map("shops")
+}
+
+/// A saved keyword research run (tenant-owned).
+model Search {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  seedKeyword String   @map("seed_keyword")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshots KeywordSnapshot[]
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("searches")
+}
+
+/// A point-in-time capture of real Etsy market signals for one keyword.
+/// Shared reference data — this time-series is what enables trend views that
+/// competitors can't reproduce. price* are in the listing currency's minor
+/// unit's decimal form (e.g. USD dollars) as returned/normalized by the client.
+model KeywordSnapshot {
+  id               String   @id @default(cuid())
+  keyword          String
+  competitionCount Int      @map("competition_count")
+  avgFavorites     Float    @map("avg_favorites")
+  priceMin         Float?   @map("price_min")
+  priceMed         Float?   @map("price_med")
+  priceMax         Float?   @map("price_max")
+  capturedAt       DateTime @default(now()) @map("captured_at")
+
+  // Optional link to the Search that triggered this capture.
+  searchId String? @map("search_id")
+  search   Search? @relation(fields: [searchId], references: [id], onDelete: SetNull)
+
+  score KeywordScore?
+
+  @@index([keyword, capturedAt])
+  @@index([searchId])
+  @@map("keyword_snapshots")
+}
+
+/// Derived difficulty / demand / opportunity for a snapshot (1:1).
+/// All scores are 0–100. Formulas live in src/lib/keywords/scoring.ts and are
+/// unit-tested — see CLAUDE.md §7 ("test the load-bearing parts").
+model KeywordScore {
+  id          String       @id @default(cuid())
+  snapshotId  String       @unique @map("snapshot_id")
+  difficulty  Float
+  demand      Float
+  opportunity Float
+  verdict     NicheVerdict
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  snapshot KeywordSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@map("keyword_scores")
+}
+
+/// A saved fee & profit calculation (tenant-owned).
+/// Inputs are stored so a calc can be re-opened; the computed results are
+/// stored as a point-in-time record, since the fee schedule can change.
+/// `breakdownJson` holds the itemized fee lines exactly as computed.
+model FeeCalculation {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  label           String?
+  itemCost        Float    @map("item_cost")
+  shippingCost    Float    @map("shipping_cost")
+  salePrice       Float    @map("sale_price")
+  shippingCharged Float    @default(0) @map("shipping_charged")
+  revenue         Float
+  totalFees       Float    @map("total_fees")
+  netProfit       Float    @map("net_profit")
+  marginPct       Float    @map("margin_pct")
+  breakdownJson   Json     @map("breakdown_json")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("fee_calculations")
+}
+
+/// A listing audit result (tenant-owned via Shop). Findings kept as JSON until
+/// the audit module (Phase 3) firms up its shape.
+model AuditRun {
+  id           String   @id @default(cuid())
+  shopId       String   @map("shop_id")
+  listingId    String   @map("listing_id")
+  score        Float
+  findingsJson Json     @map("findings_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@map("audit_runs")
+}
