@@ -31,8 +31,25 @@ export interface AutosuggestResult {
   source: DataSource;
 }
 
+/** Full detail for a single listing — the input to the listing audit. */
+export interface EtsyListingDetail {
+  listingId: string;
+  title: string;
+  description: string;
+  tags: string[];
+  materials: string[];
+  price: number;
+  currencyCode: string;
+  quantity: number;
+  numFavorers: number;
+  views: number;
+  imageCount: number;
+  source: DataSource;
+}
+
 export interface EtsyClient {
   readonly source: DataSource;
   searchActiveListings(query: string, opts?: { limit?: number }): Promise<ListingSearchResult>;
   getAutosuggestions(seed: string): Promise<AutosuggestResult>;
+  getListing(listingId: string): Promise<EtsyListingDetail>;
 }

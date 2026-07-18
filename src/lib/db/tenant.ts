@@ -141,6 +141,58 @@ export function tenantDb(userId: string) {
       getById(id: string) {
         return prisma.shop.findFirst({ where: { id, userId } });
       },
+      /**
+       * The user's default shop, created on first use. AuditRun is scoped to a
+       * Shop, but a seller can audit listings before connecting their Etsy
+       * shop — so we provision a placeholder they can rename/connect later.
+       */
+      async getOrCreateDefault() {
+        const existing = await prisma.shop.findFirst({
+          where: { userId },
+          orderBy: { name: 'asc' },
+        });
+        if (existing) return existing;
+        return prisma.shop.create({ data: { userId, name: 'My Shop', etsyShopId: null } });
+      },
+    },
+
+    /**
+     * Listing audits. AuditRun has no userId of its own — it hangs off Shop —
+     * so every read joins through `shop: { userId }` and every write verifies
+     * shop ownership first. Same isolation guarantee, one level deeper.
+     */
+    audits: {
+      async create(input: {
+        shopId: string;
+        listingId: string;
+        score: number;
+        findingsJson: Prisma.InputJsonValue;
+      }) {
+        const owned = await prisma.shop.findFirst({
+          where: { id: input.shopId, userId },
+          select: { id: true },
+        });
+        if (!owned) throw new Error('Shop not found for this user.');
+        return prisma.auditRun.create({ data: input });
+      },
+      list(args?: { take?: number }) {
+        return prisma.auditRun.findMany({
+          where: { shop: { userId } },
+          orderBy: { createdAt: 'desc' },
+          take: args?.take,
+        });
+      },
+      getById(id: string) {
+        return prisma.auditRun.findFirst({ where: { id, shop: { userId } } });
+      },
+      /** Prior audits of one listing — lets a seller see score movement. */
+      historyFor(listingId: string, args?: { take?: number }) {
+        return prisma.auditRun.findMany({
+          where: { listingId, shop: { userId } },
+          orderBy: { createdAt: 'asc' },
+          take: args?.take,
+        });
+      },
     },
 
     /**

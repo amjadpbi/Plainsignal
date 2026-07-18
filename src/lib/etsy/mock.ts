@@ -1,4 +1,9 @@
-import type { AutosuggestResult, EtsyListing, ListingSearchResult } from './types';
+import type {
+  AutosuggestResult,
+  EtsyListing,
+  EtsyListingDetail,
+  ListingSearchResult,
+} from './types';
 
 /**
  * Deterministic synthetic Etsy data for MOCK MODE (CLAUDE.md §5, step 4:
@@ -118,6 +123,67 @@ function mockListings(query: string, rng: () => number, limit: number): EtsyList
     });
   }
   return listings;
+}
+
+const MOCK_PRODUCTS = [
+  'linen apron',
+  'ceramic mug',
+  'macrame wall hanging',
+  'leather journal',
+  'soy candle',
+  'enamel pin',
+];
+
+/**
+ * A deterministic mock listing for the audit module. Quality is deliberately
+ * VARIED by listing id — some listings have short titles, missing tags,
+ * over-long tags, or few photos — so the audit has real defects to find rather
+ * than always scoring a perfect listing.
+ */
+export function mockGetListing(listingId: string): EtsyListingDetail {
+  const rng = rngFor(`listing:${listingId}`);
+  const product = MOCK_PRODUCTS[Math.floor(rng() * MOCK_PRODUCTS.length)];
+  const quality = rng(); // drives how well-optimized this listing is
+
+  // Title: well-optimized listings get a long, keyword-rich title.
+  const suffixes = ['handmade gift', 'for her', 'custom personalized', 'rustic home decor'];
+  let title = `${product}`;
+  if (quality > 0.35) {
+    title = `Personalized ${product} — ${suffixes[Math.floor(rng() * suffixes.length)]}, handmade`;
+  }
+  if (quality > 0.7) {
+    title = `Personalized ${product} for her, handmade ${product} gift, custom ${product} rustic home decor, unique housewarming present`;
+  }
+
+  // Tags: poor listings under-use the 13 available slots.
+  const pool = mockAutosuggest(product).suggestions;
+  const tagCount = Math.max(2, Math.round(quality * 13));
+  const tags = pool.slice(0, tagCount);
+  // Occasionally emit an over-long tag (Etsy caps tags at 20 characters).
+  if (quality < 0.5 && tags.length > 0) {
+    tags[0] = `${product} personalized custom gift`;
+  }
+
+  const imageCount = Math.max(1, Math.round(quality * 8));
+  const description =
+    quality > 0.5
+      ? `This ${product} is handmade in small batches. Each piece is finished by hand and made to last. Materials are sourced responsibly, and every order ships with care instructions and gift-ready packaging.`
+      : `A ${product}.`;
+
+  return {
+    listingId,
+    title,
+    description,
+    tags,
+    materials: quality > 0.6 ? ['cotton', 'linen'] : [],
+    price: Math.round((6 + rng() * 60) * 100) / 100,
+    currencyCode: 'USD',
+    quantity: Math.max(1, Math.round(rng() * 20)),
+    numFavorers: Math.round(rng() * 400),
+    views: Math.round(rng() * 5000),
+    imageCount,
+    source: 'mock',
+  };
 }
 
 export function mockSearchActiveListings(query: string, limit = 24): ListingSearchResult {

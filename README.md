@@ -53,6 +53,31 @@ same keyword again later and you get another point in its time-series.
 > the history mechanism works, but the lines are flat by construction. Real
 > movement appears once `ETSY_API_KEY` is set.
 
+## Phase 3 (built): honest modules
+
+**Fee & profit calculator** (`/fees`) — pure integer-cents math on Etsy's
+published fee schedule. Itemized fees always sum exactly to the total.
+
+**Listing audit** (`/audit`) — paste a listing ID or Etsy URL and get a
+0–100 score across title, tags, price, photos, and description. Every rule is
+grounded in either a documented Etsy limit (140-char title; 13 tag slots of 20
+chars) or **real competitor data** (price is judged against the median of
+active listings for the keyword). No AI opinions. When competitor data is
+unavailable, price is simply **not scored** rather than guessed at.
+
+## Etsy API key states
+
+| `ETSY_API_KEY` | Behavior |
+|---|---|
+| empty | Mock mode — deterministic synthetic data, labeled `MOCK DATA` in the UI |
+| set + approved | Live Etsy data |
+| set + pending approval | Calls fail with **HTTP 502 / `ETSY_AUTH_FAILED`**, quoting Etsy's message |
+
+A key that Etsy has not yet approved returns
+`403 API key not found or not active`. The app surfaces that verbatim and
+**never silently falls back to mock data** — if you want mock mode while
+waiting for approval, clear `ETSY_API_KEY`.
+
 ## Local setup
 
 No Docker, no local database daemon required.

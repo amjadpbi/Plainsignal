@@ -1,15 +1,38 @@
 import { env, ETSY_MOCK_MODE } from '../env';
 import { getKv, type KvStore } from '../kv';
 import { RateLimiter } from '../rate-limit';
-import { mockAutosuggest, mockSearchActiveListings } from './mock';
+import { mockAutosuggest, mockGetListing, mockSearchActiveListings } from './mock';
 import type {
   AutosuggestResult,
   EtsyClient,
   EtsyListing,
+  EtsyListingDetail,
   ListingSearchResult,
 } from './types';
 
 const DEFAULT_SAMPLE_LIMIT = 24;
+
+/**
+ * A non-OK response from Etsy. Carries the upstream status and message so
+ * callers can distinguish a credential problem (401/403 — e.g. a key still
+ * pending Etsy's approval) from a transient upstream fault, instead of
+ * collapsing everything into an opaque 500.
+ */
+export class EtsyApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly etsyMessage: string,
+    public readonly path: string,
+  ) {
+    super(`Etsy API ${status} for ${path}: ${etsyMessage}`);
+    this.name = 'EtsyApiError';
+  }
+
+  /** True when Etsy rejected our credentials outright. */
+  get isAuthError(): boolean {
+    return this.status === 401 || this.status === 403;
+  }
+}
 
 /**
  * MOCK client — deterministic synthetic data, no network, no rate limit.
@@ -27,6 +50,10 @@ export class MockEtsyClient implements EtsyClient {
 
   async getAutosuggestions(seed: string): Promise<AutosuggestResult> {
     return mockAutosuggest(seed);
+  }
+
+  async getListing(listingId: string): Promise<EtsyListingDetail> {
+    return mockGetListing(listingId);
   }
 }
 
@@ -91,7 +118,15 @@ export class EtsyApiClient implements EtsyClient {
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      throw new Error(`Etsy API ${res.status} ${res.statusText} for ${path}: ${body.slice(0, 200)}`);
+      // Prefer Etsy's own {"error": "..."} message when present.
+      let upstream = body.slice(0, 300);
+      try {
+        const parsed = JSON.parse(body);
+        if (typeof parsed?.error === 'string') upstream = parsed.error;
+      } catch {
+        /* non-JSON body — keep the raw text */
+      }
+      throw new EtsyApiError(res.status, upstream, path);
     }
     return (await res.json()) as T;
   }
@@ -138,6 +173,42 @@ export class EtsyApiClient implements EtsyClient {
         listings,
         source: this.source,
       } satisfies ListingSearchResult;
+    });
+  }
+
+  /** Fetch one listing's full detail (the audit's input). */
+  async getListing(listingId: string): Promise<EtsyListingDetail> {
+    const cacheKey = `etsy:cache:listing:${listingId}`;
+
+    return this.cached(cacheKey, async () => {
+      const raw = await this.request<{
+        results?: Array<Record<string, unknown>>;
+        listing_id?: number;
+      }>(`/listings/${encodeURIComponent(listingId)}`, { includes: 'Images' });
+
+      // v3 returns either the object directly or wrapped in `results[0]`.
+      const l = (Array.isArray(raw.results) ? raw.results[0] : raw) as Record<string, unknown>;
+      if (!l) throw new EtsyApiError(404, 'Listing not found', `/listings/${listingId}`);
+
+      const priceObj = l.price as
+        | { amount: number; divisor: number; currency_code: string }
+        | undefined;
+      const { price, currencyCode } = EtsyApiClient.normalizePrice(priceObj);
+
+      return {
+        listingId: String(l.listing_id ?? listingId),
+        title: String(l.title ?? ''),
+        description: String(l.description ?? ''),
+        tags: Array.isArray(l.tags) ? (l.tags as string[]) : [],
+        materials: Array.isArray(l.materials) ? (l.materials as string[]) : [],
+        price,
+        currencyCode,
+        quantity: Number(l.quantity ?? 0),
+        numFavorers: Number(l.num_favorers ?? 0),
+        views: Number(l.views ?? 0),
+        imageCount: Array.isArray(l.images) ? (l.images as unknown[]).length : 0,
+        source: this.source,
+      } satisfies EtsyListingDetail;
     });
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EtsyApiClient, MockEtsyClient } from '@/lib/etsy/client';
+import { EtsyApiClient, EtsyApiError, MockEtsyClient } from '@/lib/etsy/client';
 import { MemoryKvStore } from '@/lib/kv';
 import { RateLimiter } from '@/lib/rate-limit';
 
@@ -114,6 +114,63 @@ describe('EtsyApiClient (live path with injected fetch)', () => {
     const [url, init] = (fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(String(url)).toContain('keywords=linen+apron');
     expect((init as RequestInit).headers).toMatchObject({ 'x-api-key': 'test-key' });
+  });
+
+  it('raises a typed auth error on 403 — never falls back to mock data', async () => {
+    // The exact response Etsy returns for a key still pending approval.
+    const fetchFn = vi.fn(async () => ({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+      text: async () =>
+        '{"error":"API key not found or not active, or incorrect shared secret for API key."}',
+      json: async () => ({}),
+    })) as unknown as typeof fetch;
+    const client = makeLiveClient(fetchFn);
+
+    const err = await client.searchActiveListings('linen apron').catch((e) => e);
+
+    expect(err).toBeInstanceOf(EtsyApiError);
+    expect(err.status).toBe(403);
+    expect(err.isAuthError).toBe(true);
+    // Etsy's own message is preserved, not swallowed.
+    expect(err.etsyMessage).toBe(
+      'API key not found or not active, or incorrect shared secret for API key.',
+    );
+  });
+
+  it('treats 401 as an auth error and 500 as a non-auth upstream error', async () => {
+    const make = (status: number) =>
+      makeLiveClient(
+        vi.fn(async () => ({
+          ok: false,
+          status,
+          statusText: 'x',
+          text: async () => '{"error":"boom"}',
+          json: async () => ({}),
+        })) as unknown as typeof fetch,
+      );
+
+    const e401 = await make(401).searchActiveListings('a').catch((e) => e);
+    expect(e401.isAuthError).toBe(true);
+
+    const e500 = await make(500).searchActiveListings('b').catch((e) => e);
+    expect(e500).toBeInstanceOf(EtsyApiError);
+    expect(e500.isAuthError).toBe(false);
+  });
+
+  it('keeps a non-JSON error body as raw text', async () => {
+    const client = makeLiveClient(
+      vi.fn(async () => ({
+        ok: false,
+        status: 502,
+        statusText: 'Bad Gateway',
+        text: async () => '<html>upstream down</html>',
+        json: async () => ({}),
+      })) as unknown as typeof fetch,
+    );
+    const err = await client.searchActiveListings('a').catch((e) => e);
+    expect(err.etsyMessage).toContain('upstream down');
   });
 
   it('derives live autosuggestions from real listing tags, ranked by frequency', async () => {

@@ -78,6 +78,9 @@ describe('runKeywordResearch (mock client)', () => {
       async getAutosuggestions(seed): Promise<AutosuggestResult> {
         return { seed, suggestions: ['high opp', 'low opp'], source: 'mock' };
       },
+      async getListing() {
+        throw new Error('not used in this test');
+      },
       async searchActiveListings(query): Promise<ListingSearchResult> {
         const profile =
           query === 'high opp'

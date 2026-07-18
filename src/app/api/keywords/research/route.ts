@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { runKeywordResearch } from '@/lib/keywords/service';
 import { RateLimitError } from '@/lib/rate-limit';
 import { AuthError, requireUser } from '@/lib/auth/require-user';
+import { EtsyApiError } from '@/lib/etsy/client';
 
 // Keyword research does live/mocked I/O — never statically prerender it.
 export const dynamic = 'force-dynamic';
@@ -73,6 +74,35 @@ export async function POST(request: Request) {
       // 429 for the daily/second Etsy ceilings.
       return NextResponse.json({ error: err.message }, { status: 429 });
     }
+
+    if (err instanceof EtsyApiError) {
+      console.error('Etsy API rejected the request:', err.message);
+      // Upstream failure — 502, never a silent fallback to mock data.
+      if (err.isAuthError) {
+        return NextResponse.json(
+          {
+            error:
+              `Etsy rejected the API key (HTTP ${err.status}): "${err.etsyMessage}" ` +
+              'If your app is still "Pending Personal Approval", the key is not active yet — ' +
+              'this call will keep failing until Etsy approves it. Clear ETSY_API_KEY to return to mock mode.',
+            code: 'ETSY_AUTH_FAILED',
+            etsyStatus: err.status,
+            etsyMessage: err.etsyMessage,
+          },
+          { status: 502 },
+        );
+      }
+      return NextResponse.json(
+        {
+          error: `Etsy API error (HTTP ${err.status}): "${err.etsyMessage}"`,
+          code: 'ETSY_UPSTREAM_ERROR',
+          etsyStatus: err.status,
+          etsyMessage: err.etsyMessage,
+        },
+        { status: 502 },
+      );
+    }
+
     console.error('Keyword research failed:', err);
     return NextResponse.json(
       { error: 'Keyword research failed. Check server logs.' },
