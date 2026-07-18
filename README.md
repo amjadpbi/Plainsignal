@@ -65,6 +65,35 @@ chars) or **real competitor data** (price is judged against the median of
 active listings for the keyword). No AI opinions. When competitor data is
 unavailable, price is simply **not scored** rather than guessed at.
 
+**Trademark risk** (`/trademark`) — checks a title/tags (or a listing) against a
+register of trademarks and surfaces real matches with the mark, its status, and
+its owner. Exact, whole-phrase, and close-spelling matches are reported; live
+registrations rank above dead ones. **No AI judges infringement** — a match is
+surfaced, not interpreted.
+
+### Why trademark runs in mock mode
+
+There is no official, keyless USPTO API that searches marks by text
+(verified 2026-07-19):
+
+- **TESS was retired** on 2023-11-30. Its replacement,
+  [Trademark Search](https://tmsearch.uspto.gov/), is a web UI with **no public API**.
+- **TSDR** has an API but requires an API key tied to a USPTO.gov account, and
+  it retrieves *status and documents for a known serial/registration number* —
+  it is not a free-text mark search.
+- The **Open Data Portal** (data.uspto.gov) offers **bulk downloads** of the
+  register and, since 2026-06-18, requires signing in with a USPTO.gov account.
+  The legacy Developer Hub was decommissioned 2026-06-05.
+
+So going live means ingesting the ODP bulk register yourself or subscribing to a
+commercial search API. `HttpTrademarkClient` is the seam: set
+`TRADEMARK_API_URL` and `TRADEMARK_API_KEY` and it switches over, normalizing
+whatever comes back into the same shape the matching logic already consumes.
+
+> Mock records use `MOCK-…` serial numbers so a placeholder identifier can never
+> be mistaken for a genuine USPTO record. The mark texts and owners are real,
+> well-known registrations; the identifiers are deliberately not.
+
 ## Etsy API key states
 
 | `ETSY_API_KEY` | Behavior |

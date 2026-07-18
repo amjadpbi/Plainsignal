@@ -20,6 +20,14 @@ const schema = z.object({
   ETSY_RATE_PER_DAY: z.coerce.number().int().positive().default(5000),
   ETSY_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(86_400),
 
+  // --- Trademark source (Phase 3) ---
+  // No official keyless USPTO text-search API exists (TESS retired; TSDR is
+  // serial-number lookup behind a key; ODP is bulk data behind an account).
+  // Point these at whichever register you have rights to query; when unset,
+  // the trademark module runs in mock mode.
+  TRADEMARK_API_URL: z.string().optional().default(''),
+  TRADEMARK_API_KEY: z.string().optional().default(''),
+
   // --- Supabase Auth (Phase 2) — identity issuer only ---
   NEXT_PUBLIC_SUPABASE_URL: z.string().optional().default(''),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional().default(''),
