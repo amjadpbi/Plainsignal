@@ -20,6 +20,22 @@ const schema = z.object({
   ETSY_RATE_PER_DAY: z.coerce.number().int().positive().default(5000),
   ETSY_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(86_400),
 
+  // --- AI layer (Phase 4) — provider-agnostic narrative ---
+  // The AI only writes rationale over numbers we computed; the grounding guard
+  // validates its output regardless of provider. When NO key is set, the layer
+  // runs in mock mode: metrics are still real, the narrative is templated.
+  //
+  // OpenRouter is the default (free models available, no paid billing).
+  // Set AI_PROVIDER to force one when both keys are present.
+  AI_PROVIDER: z.enum(['openrouter', 'anthropic', '']).optional().default(''),
+  OPENROUTER_API_KEY: z.string().optional().default(''),
+  // Free-model IDs end in `:free` and the lineup rotates, so default to the
+  // auto-router rather than pinning a model that may be withdrawn.
+  OPENROUTER_MODEL: z.string().optional().default('openrouter/free'),
+  OPENROUTER_BASE_URL: z.string().optional().default('https://openrouter.ai/api/v1'),
+  // Optional alternative provider — requires paid billing.
+  ANTHROPIC_API_KEY: z.string().optional().default(''),
+
   // --- Trademark source (Phase 3) ---
   // No official keyless USPTO text-search API exists (TESS retired; TSDR is
   // serial-number lookup behind a key; ODP is bulk data behind an account).

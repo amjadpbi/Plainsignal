@@ -94,6 +94,43 @@ whatever comes back into the same shape the matching logic already consumes.
 > be mistaken for a genuine USPTO record. The mark texts and owners are real,
 > well-known registrations; the identifiers are deliberately not.
 
+## Phase 4 (built): pricing assistant — grounded AI
+
+`/pricing` takes a keyword plus your costs and returns three price tiers.
+
+**The AI never picks a number.** Tier prices are the real 25th/50th/75th
+percentiles of active competitor listings; profit at each tier is computed by
+the fee calculator. The model's only job is to explain the tradeoff between
+figures it was handed.
+
+### The grounding guard
+
+A prompt saying "don't invent numbers" is not enforcement. `src/lib/ai/grounding.ts`
+extracts every dollar amount and percentage from the model's response and checks
+each against the exact set of figures we supplied. Anything else is a
+fabrication, and the narrative is **discarded** in favour of a deterministic
+summary — the UI says so explicitly.
+
+The guard is provider-agnostic and sits between *any* provider's output and the
+user. Verified against the real OpenRouter adapter:
+
+| Model output | Result |
+|---|---|
+| `median … $30.00 … nets $19.70 after $3.30` | shown (all figures supplied) |
+| `you should clear $2,400.00 in monthly revenue` | **discarded** — `$2,400.00` not in the data |
+| `expect roughly 3.5% of viewers to convert` | **discarded** — `3.5%` not in the data |
+
+### AI providers
+
+| `AI_PROVIDER` / keys | Behavior |
+|---|---|
+| no keys | Mock mode — metrics still real, narrative is a computed summary |
+| `OPENROUTER_API_KEY` | **Default.** OpenAI-compatible; free models need no paid billing |
+| `ANTHROPIC_API_KEY` | Alternative; requires paid billing |
+
+`OPENROUTER_MODEL` defaults to `openrouter/free` (the free auto-router) rather
+than a pinned `:free` model, because OpenRouter's free lineup rotates.
+
 ## Etsy API key states
 
 | `ETSY_API_KEY` | Behavior |

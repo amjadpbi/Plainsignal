@@ -44,7 +44,7 @@ substitute for them.
 | Background jobs | BullMQ (on Redis) | Scheduled Etsy ingestion, keyword-tracking snapshots |
 | Auth | Supabase Auth (auth only) | Managed auth from day one; identity issuer only — app data stays in our own Postgres |
 | Billing | Stripe | Added at monetization phase, not before |
-| AI layer | Anthropic API | Grounded prompts only — real numbers passed in as context |
+| AI layer | OpenRouter (default) or Anthropic — provider-agnostic | Grounded prompts only — real numbers passed in as context. OpenRouter has free models, so no paid billing is required; Anthropic is an opt-in alternative. A numeric **grounding guard** sits between ANY provider's output and the user and discards narratives citing figures we didn't supply |
 | Deploy | Docker | Deferred to the deploy phase — NOT part of local setup (see below) |
 
 **Local setup (current):** run the app with plain `npm run dev`. Postgres is a

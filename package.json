@@ -20,6 +20,7 @@
     "schema": "prisma/schema.prisma"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.3",
     "@prisma/client": "^5.19.1",
     "@supabase/supabase-js": "^2.110.7",
     "ioredis": "^5.4.1",
