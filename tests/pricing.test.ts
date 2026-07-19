@@ -159,6 +159,19 @@ describe('grounding guard', () => {
     expect(verifyGrounding('you net $19.7', allowed).ok).toBe(true);
   });
 
+  it('does NOT let a decimal percentage ride on an unrelated integer', () => {
+    // Regression: the whole-number tolerance (so 53.49 may be written "53%")
+    // used to match on either precision, which meant "2.3%" passed whenever
+    // the integer 2 appeared anywhere in the data. A decimal citation must
+    // match a supplied decimal.
+    const a = buildAllowedFigures({ currency: [], percent: [2, 53.49] });
+    expect(verifyGrounding('converts at 2.3%', a).ok).toBe(false);
+    expect(verifyGrounding('a 2% share', a).ok).toBe(true); // supplied exactly
+    expect(verifyGrounding('a 53% margin', a).ok).toBe(true); // rounding of 53.49
+    expect(verifyGrounding('a 53.5% margin', a).ok).toBe(true); // 1dp rounding
+    expect(verifyGrounding('a 53.4% margin', a).ok).toBe(false); // not a rounding
+  });
+
   it('handles thousands separators and spacing', () => {
     const a = buildAllowedFigures({ currency: [1234.56], percent: [] });
     expect(verifyGrounding('costs $1,234.56 total', a).ok).toBe(true);

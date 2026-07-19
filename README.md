@@ -131,6 +131,48 @@ user. Verified against the real OpenRouter adapter:
 `OPENROUTER_MODEL` defaults to `openrouter/free` (the free auto-router) rather
 than a pinned `:free` model, because OpenRouter's free lineup rotates.
 
+## Phase 4 (built): AI seller coach
+
+`/coach` is a chat assistant that answers from **your own saved data** — keyword
+snapshots and scores, listing audits, and fee calculations, all read through the
+tenant-scoped client. It gets no general Etsy knowledge to draw figures from.
+
+Same guard as the pricing assistant, extended to bare numbers so competition
+counts are checked too. The allowed set is derived from the **serialized
+context** — literally every number in the JSON handed to the model — so a
+figure is admissible only if we supplied it.
+
+Real answer against real database rows (OpenRouter, `openrouter/free`):
+
+> **Q: "How's my linen apron niche doing?"**
+> "handmade linen apron" is rated STRONG with 104 competitors, 239.25 average
+> favorites… "linen apron" alone is CROWDED with 98 competitors but commands
+> higher prices ($43.40 median)… Your listing 77 scores 59: priced 247% above
+> the $15 market median, only 8 of 13 tags used… At $30 sale price, you net
+> $18.72 (53.49% margin).
+
+Every figure there is a row in Postgres. Asked for data that doesn't exist
+("how many sales and what's my conversion rate?"), it answers *"the data does
+not include sales, revenue, or conversion rate"* and cites no numbers.
+
+### Two guard bugs the end-to-end run caught
+
+Unit tests passed while both of these were live — only running against real data
+exposed them:
+
+1. **Figures inside supplied prose were rejected.** An audit finding reads
+   *"Priced 247% above the market median of $15.00"*. The allowed set was built
+   from a hand-written list of structured fields, so `247%` looked invented and
+   a correct answer was discarded. The set is now derived from the serialized
+   context, which also fixed a second rejection over a listing id.
+2. **A decimal percentage could ride on an unrelated integer.** The tolerance
+   letting `53.49` be written "53%" matched on either precision — so `2.3%`
+   passed whenever the integer `2` appeared anywhere in the data. Citations are
+   now precision-aware: a decimal must match a supplied decimal.
+
+The guard failed *safe* both times (real figures were shown), but the first bug
+made it over-reject and the second made it under-reject.
+
 ## Etsy API key states
 
 | `ETSY_API_KEY` | Behavior |

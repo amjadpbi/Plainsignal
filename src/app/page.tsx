@@ -184,6 +184,9 @@ export default function Home() {
             <Link href="/pricing" className="text-xs font-medium text-brand hover:underline">
               Pricing
             </Link>
+            <Link href="/coach" className="text-xs font-medium text-brand hover:underline">
+              Coach
+            </Link>
             <button onClick={logout} className="text-xs font-medium text-brand hover:underline">
               Log out
             </button>
