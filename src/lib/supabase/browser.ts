@@ -24,10 +24,31 @@ export function getBrowserSupabase(): SupabaseClient {
   return client;
 }
 
+const DEVICE_STORAGE_KEY = 'plainsignal.device-id';
+
+/**
+ * A stable per-browser device id for single-device enforcement (Phase 5).
+ * Generated once and kept in localStorage; the server only ever stores a hash.
+ * A different browser or profile is a different device — which is the point.
+ */
+export function getDeviceId(): string {
+  if (typeof window === 'undefined') return '';
+  let id = window.localStorage.getItem(DEVICE_STORAGE_KEY);
+  if (!id) {
+    id =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `dev-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+    window.localStorage.setItem(DEVICE_STORAGE_KEY, id);
+  }
+  return id;
+}
+
 /**
  * fetch() wrapper that attaches the current Supabase access token as a bearer
- * header, so protected API routes can verify the JWT. Returns 401-shaped
- * behavior naturally when there is no session.
+ * header, so protected API routes can verify the JWT, plus the device id used
+ * for single-device enforcement. Returns 401-shaped behavior naturally when
+ * there is no session.
  */
 export async function authedFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const supabase = getBrowserSupabase();
@@ -39,5 +60,8 @@ export async function authedFetch(input: string, init: RequestInit = {}): Promis
   if (session?.access_token) {
     headers.set('Authorization', `Bearer ${session.access_token}`);
   }
+  const deviceId = getDeviceId();
+  if (deviceId) headers.set('x-device-id', deviceId);
+
   return fetch(input, { ...init, headers });
 }

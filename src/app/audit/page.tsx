@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AccessGate } from '@/components/access-gate';
 import { authedFetch, getBrowserSupabase } from '@/lib/supabase/browser';
 import type { AuditResult } from '@/lib/audit/audit';
 import type { Severity } from '@/lib/audit/rules';
@@ -19,7 +20,7 @@ function scoreTone(score: number): string {
   return 'text-red-600 dark:text-red-400';
 }
 
-export default function AuditPage() {
+function AuditPageInner() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [listing, setListing] = useState('');
   const [loading, setLoading] = useState(false);
@@ -253,5 +254,13 @@ export default function AuditPage() {
         </section>
       )}
     </main>
+  );
+}
+
+export default function AuditPage() {
+  return (
+    <AccessGate>
+      <AuditPageInner />
+    </AccessGate>
   );
 }

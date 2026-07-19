@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AccessGate } from '@/components/access-gate';
 import { authedFetch, getBrowserSupabase } from '@/lib/supabase/browser';
 import type { PricingAdvice } from '@/lib/pricing/assistant';
 
@@ -38,7 +39,7 @@ function NumberField({
   );
 }
 
-export default function PricingPage() {
+function PricingPageInner() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [keyword, setKeyword] = useState('linen apron');
   const [itemCost, setItemCost] = useState(8);
@@ -319,5 +320,13 @@ export default function PricingPage() {
         </section>
       )}
     </main>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <AccessGate>
+      <PricingPageInner />
+    </AccessGate>
   );
 }

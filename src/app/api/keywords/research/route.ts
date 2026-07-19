@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { runKeywordResearch } from '@/lib/keywords/service';
 import { RateLimitError } from '@/lib/rate-limit';
-import { AuthError, requireUser } from '@/lib/auth/require-user';
+import { AccessError, AuthError, requireActiveUser } from '@/lib/auth/require-user';
 import { EtsyApiError } from '@/lib/etsy/client';
 
 // Keyword research does live/mocked I/O — never statically prerender it.
@@ -17,10 +17,18 @@ export async function POST(request: Request) {
   // Auth gate: verify JWT + resolve to our User row + get a tenant-scoped DB.
   let auth;
   try {
-    auth = await requireUser(request);
+    auth = await requireActiveUser(request);
   } catch (err) {
     if (err instanceof AuthError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    if (err instanceof AccessError) {
+      // Specific, user-facing reason with the decision attached so the UI can
+      // render the right blocked screen — never a generic error (Phase 5).
+      return NextResponse.json(
+        { error: err.message, code: err.decision.code, access: err.decision },
+        { status: err.status },
+      );
     }
     throw err;
   }

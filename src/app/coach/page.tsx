@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { AccessGate } from '@/components/access-gate';
 import { authedFetch, getBrowserSupabase } from '@/lib/supabase/browser';
 import type { CoachAnswer, CoachTurn } from '@/lib/coach/coach';
 
@@ -20,7 +21,7 @@ const SUGGESTIONS = [
   'Am I pricing high enough to make a profit?',
 ];
 
-export default function CoachPage() {
+function CoachPageInner() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -198,5 +199,13 @@ export default function CoachPage() {
         </button>
       </form>
     </main>
+  );
+}
+
+export default function CoachPage() {
+  return (
+    <AccessGate>
+      <CoachPageInner />
+    </AccessGate>
   );
 }

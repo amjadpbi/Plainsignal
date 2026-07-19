@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { authedFetch, getBrowserSupabase } from '@/lib/supabase/browser';
+import { AccessGate } from '@/components/access-gate';
 import type { NicheVerdict, ResearchResult } from '@/lib/keywords/types';
 
 const VERDICT_STYLES: Record<NicheVerdict, string> = {
@@ -50,6 +51,7 @@ type AuthState =
 
 export default function Home() {
   const [auth, setAuth] = useState<AuthState>({ status: 'loading' });
+  const [isAdmin, setIsAdmin] = useState(false);
   const [seed, setSeed] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,9 +77,13 @@ export default function Home() {
   }, []);
 
   // Provision our User row on load (idempotent) once authenticated.
+  // Also tells us whether to surface the admin link.
   useEffect(() => {
     if (auth.status === 'authed') {
-      authedFetch('/api/me').catch(() => {});
+      authedFetch('/api/me')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setIsAdmin(Boolean(d?.isAdmin)))
+        .catch(() => {});
     }
   }, [auth.status]);
 
@@ -144,6 +150,7 @@ export default function Home() {
   }
 
   return (
+    <AccessGate>
     <main className="mx-auto max-w-5xl px-4 py-10">
       <header className="mb-8 flex items-start justify-between gap-4">
         <div>
@@ -187,6 +194,11 @@ export default function Home() {
             <Link href="/coach" className="text-xs font-medium text-brand hover:underline">
               Coach
             </Link>
+            {isAdmin && (
+              <Link href="/admin" className="text-xs font-medium text-brand hover:underline">
+                Admin
+              </Link>
+            )}
             <button onClick={logout} className="text-xs font-medium text-brand hover:underline">
               Log out
             </button>
@@ -298,6 +310,7 @@ export default function Home() {
         </p>
       )}
     </main>
+    </AccessGate>
   );
 }
 

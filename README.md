@@ -173,6 +173,50 @@ exposed them:
 The guard failed *safe* both times (real figures were shown), but the first bug
 made it over-reject and the second made it under-reject.
 
+## Phase 5 (built): access control — manual, no payment gateway
+
+Signup starts a **7-day trial**. Gated actions (research, audit, pricing,
+coach) stop once it lapses unless an admin activates the account. Blocked users
+see a specific reason and a contact, never a generic error.
+
+| `planStatus` | Effect |
+|---|---|
+| `TRIAL` | Full access until `trialEndsAt`; flips to EXPIRED automatically once passed |
+| `ACTIVE` | Full access, ignores the trial clock (set by an admin) |
+| `EXPIRED` | Blocked — "trial ended, contact …" |
+| `DISABLED` | Blocked — set by the single-device rule |
+
+### Single-device enforcement
+
+The browser generates a device id once and sends it as `x-device-id`; the
+server stores only a **hash**. A second device does **not** silently evict the
+first — it sets `DISABLED` and shows an "active session on another device"
+screen with a *request access* action. Both devices are then blocked until an
+admin restores, which adopts the new device.
+
+> This is an account-sharing deterrent, not a security boundary. A request with
+> no `x-device-id` can't be compared, so it passes rather than locking someone
+> out over a missing header.
+
+### Admin panel
+
+`/admin`, gated by `isAdmin` (seeded from `ADMIN_EMAILS`). A non-admin gets a
+**404**, not a 403 — the panel isn't advertised. Actions: activate, restore a
+disabled user onto their new device, extend a trial, end a trial, disable.
+
+Configure in `.env`:
+
+```
+ADMIN_EMAILS="you@example.com"     # gets is_admin on provisioning
+SUPPORT_CONTACT="you@example.com"  # shown on blocked screens
+```
+
+### Why no Stripe
+
+Access state is deliberately provider-agnostic. `PlanStatus` is what the guard
+reads, and `PlanTier` is untouched and waiting — a billing webhook can set
+either later without rewriting any guard logic.
+
 ## Etsy API key states
 
 | `ETSY_API_KEY` | Behavior |

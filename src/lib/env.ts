@@ -20,6 +20,13 @@ const schema = z.object({
   ETSY_RATE_PER_DAY: z.coerce.number().int().positive().default(5000),
   ETSY_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(86_400),
 
+  // --- Access control (Phase 5) ---
+  // Comma-separated emails that get is_admin on provisioning. Keeps the admin
+  // identity out of the repo and out of git.
+  ADMIN_EMAILS: z.string().optional().default(''),
+  // Shown to blocked users so they know who to contact for activation.
+  SUPPORT_CONTACT: z.string().optional().default(''),
+
   // --- AI layer (Phase 4) — provider-agnostic narrative ---
   // The AI only writes rationale over numbers we computed; the grounding guard
   // validates its output regardless of provider. When NO key is set, the layer

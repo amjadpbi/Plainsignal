@@ -43,7 +43,8 @@ substitute for them.
 | Cache / queue | Redis | Etsy rate limits make response caching mandatory; also backs job queues |
 | Background jobs | BullMQ (on Redis) | Scheduled Etsy ingestion, keyword-tracking snapshots |
 | Auth | Supabase Auth (auth only) | Managed auth from day one; identity issuer only — app data stays in our own Postgres |
-| Billing | Stripe | Added at monetization phase, not before |
+| Access control | Manual, admin-driven (no gateway) | Trial + admin activation + single-device lock. `PlanStatus` is provider-agnostic so automated billing can drive it later without a rework |
+| Billing | Deferred | No payment provider is integrated. `PlanTier` exists for when one is |
 | AI layer | OpenRouter (default) or Anthropic — provider-agnostic | Grounded prompts only — real numbers passed in as context. OpenRouter has free models, so no paid billing is required; Anthropic is an opt-in alternative. A numeric **grounding guard** sits between ANY provider's output and the user and discards narratives citing figures we didn't supply |
 | Deploy | Docker | Deferred to the deploy phase — NOT part of local setup (see below) |
 
@@ -115,8 +116,21 @@ AI-flavored ones. Modules 5 and 7 use the LLM but only over real numbers.
 **Phase 4 — AI layer (grounded)**
 10. Pricing assistant. 11. AI seller coach. Both receive real data in every prompt.
 
-**Phase 5 — monetization**
-12. Stripe, free vs paid tiers, usage limits.
+**Phase 5 — access control (replaces the Stripe plan for now)**
+12. Manual, admin-driven access control. **No payment gateway.**
+    - `User.planStatus` (TRIAL / ACTIVE / EXPIRED / DISABLED), `trialEndsAt`,
+      `isAdmin`, `activeDeviceId`.
+    - Signup starts a **7-day trial**. Gated actions (research, audit, pricing,
+      coach) are blocked once the trial lapses unless an admin sets ACTIVE, and
+      the block states *why* with a contact — never a generic error.
+    - **Single-device enforcement:** a second device does NOT evict the first.
+      It sets DISABLED and shows an "active session on another device" screen
+      with a "request access" action, which an admin resolves.
+    - Admin panel at `/admin`, gated by `isAdmin` (seeded from `ADMIN_EMAILS`),
+      denying with a 404 so it isn't advertised. Actions: activate, restore a
+      disabled user onto their new device, extend/end a trial, disable.
+    - Keep this provider-agnostic: a billing webhook should be able to drive
+      `planStatus`/`PlanTier` later without touching the guard logic.
 
 Ship and use each phase before starting the next.
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { AuthError, requireUser } from '@/lib/auth/require-user';
+import { AccessError, AuthError, requireActiveUser } from '@/lib/auth/require-user';
 import { askCoach } from '@/lib/coach/coach';
 import { AiError } from '@/lib/ai/provider';
 
@@ -22,10 +22,18 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   let auth;
   try {
-    auth = await requireUser(request);
+    auth = await requireActiveUser(request);
   } catch (err) {
     if (err instanceof AuthError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    if (err instanceof AccessError) {
+      // Specific, user-facing reason with the decision attached so the UI can
+      // render the right blocked screen — never a generic error (Phase 5).
+      return NextResponse.json(
+        { error: err.message, code: err.decision.code, access: err.decision },
+        { status: err.status },
+      );
     }
     throw err;
   }

@@ -18,10 +18,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// Billing tier. Kept separate from PlanStatus so an automated billing
+/// provider can drive tiers later without touching access control.
 enum PlanTier {
   FREE
   STARTER
   PRO
+}
+
+/// Access state, driven manually by an admin for now (Phase 5).
+/// TRIAL    — inside the trial window; full access until trialEndsAt.
+/// ACTIVE   — activated by an admin; unrestricted, ignores trialEndsAt.
+/// EXPIRED  — trial elapsed without activation.
+/// DISABLED — locked, currently only by the single-device rule.
+enum PlanStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  DISABLED
 }
 
 enum NicheVerdict {
@@ -39,6 +53,20 @@ model User {
   supabaseAuthId String?  @unique @map("supabase_auth_id")
   plan           PlanTier @default(FREE)
   createdAt      DateTime @default(now()) @map("created_at")
+
+  // --- Access control (Phase 5) ---
+  planStatus  PlanStatus @default(TRIAL) @map("plan_status")
+  trialEndsAt DateTime?  @map("trial_ends_at")
+  isAdmin     Boolean    @default(false) @map("is_admin")
+
+  /// Single-device enforcement. Stores a HASH of the client's device id, never
+  /// the raw value. Null until the first authenticated request binds a device.
+  activeDeviceId String? @map("active_device_id")
+  /// The device that tripped the lock, so an admin can restore the user
+  /// straight onto the machine they are actually using.
+  pendingDeviceId String? @map("pending_device_id")
+  /// Set when a locked-out user asks for access; cleared on restore.
+  accessRequestedAt DateTime? @map("access_requested_at")
 
   shops           Shop[]
   searches        Search[]
