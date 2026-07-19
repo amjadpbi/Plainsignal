@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AccessGate } from '@/components/access-gate';
 import { authedFetch, getBrowserSupabase } from '@/lib/supabase/browser';
 import type { RiskLevel, TrademarkCheckResult } from '@/lib/trademark/types';
 
@@ -17,7 +18,7 @@ const MATCH_LABEL: Record<string, string> = {
   fuzzy: 'Close spelling',
 };
 
-export default function TrademarkPage() {
+function TrademarkPageInner() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [mode, setMode] = useState<'text' | 'listing'>('text');
   const [text, setText] = useState('');
@@ -236,5 +237,13 @@ export default function TrademarkPage() {
         </section>
       )}
     </main>
+  );
+}
+
+export default function TrademarkPage() {
+  return (
+    <AccessGate>
+      <TrademarkPageInner />
+    </AccessGate>
   );
 }

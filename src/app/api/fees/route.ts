@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { AuthError, requireUser } from '@/lib/auth/require-user';
+import { AccessError, AuthError, requireActiveUser } from '@/lib/auth/require-user';
 import { calculateFees } from '@/lib/fees/calculate';
 
 export const dynamic = 'force-dynamic';
@@ -24,12 +24,20 @@ const bodySchema = z.object({
 /** List the caller's saved calculations. */
 export async function GET(request: Request) {
   try {
-    const { db } = await requireUser(request);
+    const { db } = await requireActiveUser(request);
     const calculations = await db.feeCalculations.list({ take: 50 });
     return NextResponse.json({ calculations });
   } catch (err) {
     if (err instanceof AuthError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    if (err instanceof AccessError) {
+      // Specific, user-facing reason with the decision attached so the UI can
+      // render the right blocked screen — never a generic error (Phase 5).
+      return NextResponse.json(
+        { error: err.message, code: err.decision.code, access: err.decision },
+        { status: err.status },
+      );
     }
     throw err;
   }
@@ -43,10 +51,18 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   let auth;
   try {
-    auth = await requireUser(request);
+    auth = await requireActiveUser(request);
   } catch (err) {
     if (err instanceof AuthError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    if (err instanceof AccessError) {
+      // Specific, user-facing reason with the decision attached so the UI can
+      // render the right blocked screen — never a generic error (Phase 5).
+      return NextResponse.json(
+        { error: err.message, code: err.decision.code, access: err.decision },
+        { status: err.status },
+      );
     }
     throw err;
   }

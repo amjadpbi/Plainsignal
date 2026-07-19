@@ -175,9 +175,13 @@ made it over-reject and the second made it under-reject.
 
 ## Phase 5 (built): access control — manual, no payment gateway
 
-Signup starts a **7-day trial**. Gated actions (research, audit, pricing,
-coach) stop once it lapses unless an admin activates the account. Blocked users
-see a specific reason and a contact, never a generic error.
+Signup starts a **7-day trial**. Once it lapses, **every product feature**
+stops until an admin activates the account — research, audit, pricing, coach,
+fee calculator, and trademark check. Blocked users see a specific reason and a
+contact, never a generic error.
+
+`/api/me` is deliberately left ungated, so a blocked user can still load the
+screen that explains why they are blocked.
 
 | `planStatus` | Effect |
 |---|---|

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { AccessGate } from '@/components/access-gate';
 import { authedFetch, getBrowserSupabase } from '@/lib/supabase/browser';
 import { calculateFees, type OffsiteAdsMode } from '@/lib/fees/calculate';
 import {
@@ -55,7 +56,7 @@ function NumberField({
   );
 }
 
-export default function FeesPage() {
+function FeesPageInner() {
   const [authed, setAuthed] = useState<boolean | null>(null);
 
   // Core inputs
@@ -411,5 +412,13 @@ export default function FeesPage() {
         </section>
       )}
     </main>
+  );
+}
+
+export default function FeesPage() {
+  return (
+    <AccessGate>
+      <FeesPageInner />
+    </AccessGate>
   );
 }

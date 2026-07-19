@@ -120,9 +120,11 @@ AI-flavored ones. Modules 5 and 7 use the LLM but only over real numbers.
 12. Manual, admin-driven access control. **No payment gateway.**
     - `User.planStatus` (TRIAL / ACTIVE / EXPIRED / DISABLED), `trialEndsAt`,
       `isAdmin`, `activeDeviceId`.
-    - Signup starts a **7-day trial**. Gated actions (research, audit, pricing,
-      coach) are blocked once the trial lapses unless an admin sets ACTIVE, and
-      the block states *why* with a contact — never a generic error.
+    - Signup starts a **7-day trial**. Once it lapses, ALL product features
+      are blocked unless an admin sets ACTIVE — research, audit, pricing,
+      coach, fee calculator, trademark check. The block states *why* with a
+      contact, never a generic error. `/api/me` stays ungated so a blocked
+      user can load the screen explaining the block.
     - **Single-device enforcement:** a second device does NOT evict the first.
       It sets DISABLED and shows an "active session on another device" screen
       with a "request access" action, which an admin resolves.
